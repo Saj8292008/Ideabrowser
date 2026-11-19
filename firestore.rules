@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Public landing page: anyone may CREATE a lead, nobody may read,
+    // update, or delete leads from the client. View leads in the console.
+    match /leads/{leadId} {
+      allow create: if
+        request.resource.data.keys().hasOnly(['email', 'createdAt', 'source', 'tier'])
+        && request.resource.data.keys().hasAll(['email', 'createdAt', 'source', 'tier'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.source in ['hero', 'leak-report', 'final-cta', 'nav', 'pricing']
+        && (request.resource.data.tier == null
+            || request.resource.data.tier in ['Pilot Sweep', 'Archive Retainer', 'Migration Cleanup']);
+      allow read, update, delete: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
